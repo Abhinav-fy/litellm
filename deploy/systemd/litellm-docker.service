@@ -1,0 +1,32 @@
+[Unit]
+Description=LiteLLM stack (proxy + prometheus) via Docker Compose
+Documentation=https://docs.litellm.ai/
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+# Project directory: must contain docker-compose.yml, config.yaml, .env, prometheus.yml
+# Override for your machine: sudo systemctl edit litellm-docker → set WorkingDirectory=
+WorkingDirectory=/opt/litellm
+
+# Requires Docker and Docker Compose v2 (or override ExecStart/ExecStop to use docker-compose v1)
+ExecStartPre=-/usr/bin/docker compose -f docker-compose.yml config --quiet
+ExecStart=/usr/bin/docker compose -f docker-compose.yml up
+ExecStop=/usr/bin/docker compose -f docker-compose.yml down
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=litellm-docker
+
+# Security
+NoNewPrivileges=false
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target
