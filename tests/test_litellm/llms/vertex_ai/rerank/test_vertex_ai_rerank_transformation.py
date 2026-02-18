@@ -15,8 +15,31 @@ from litellm.types.rerank import RerankResponse
 
 class TestVertexAIRerankTransform:
     def setup_method(self):
+        # Save and clear Google/Vertex AI environment variables to prevent
+        # test isolation issues where previous tests leave credentials set
+        self._saved_env = {}
+        env_vars_to_clear = [
+            "GOOGLE_APPLICATION_CREDENTIALS",
+            "GOOGLE_CLOUD_PROJECT",
+            "VERTEXAI_PROJECT",
+            "VERTEXAI_CREDENTIALS",
+            "VERTEX_AI_CREDENTIALS",
+            "VERTEX_PROJECT",
+            "VERTEX_LOCATION",
+            "VERTEX_AI_PROJECT",
+        ]
+        for var in env_vars_to_clear:
+            if var in os.environ:
+                self._saved_env[var] = os.environ[var]
+                del os.environ[var]
+
         self.config = VertexAIRerankConfig()
         self.model = "semantic-ranker-default@latest"
+
+    def teardown_method(self):
+        # Restore saved environment variables
+        for var, value in self._saved_env.items():
+            os.environ[var] = value
 
     @patch('litellm.llms.vertex_ai.rerank.transformation.VertexAIRerankConfig._ensure_access_token')
     def test_get_complete_url(self, mock_ensure_access_token):
@@ -450,16 +473,20 @@ class TestVertexAIRerankTransform:
         }
         assert headers == expected_headers
 
-    @patch('litellm.llms.vertex_ai.rerank.transformation.VertexAIRerankConfig._ensure_access_token')
     def test_validate_environment_preserves_optional_params_for_get_complete_url(
         self,
-        mock_ensure_access_token,
     ):
         """
         Validate that calling validate_environment does not remove vertex-specific
         parameters needed later by get_complete_url.
+
+        Uses instance-level mocking to avoid class-reference issues caused by
+        importlib.reload(litellm) in conftest.py.
         """
-        mock_ensure_access_token.return_value = ("test-access-token", "project-from-token")
+        mock_ensure_access_token = MagicMock(
+            return_value=("test-access-token", "project-from-token")
+        )
+        self.config._ensure_access_token = mock_ensure_access_token
 
         optional_params = {
             "vertex_credentials": "path/to/credentials.json",
