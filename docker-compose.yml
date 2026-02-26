@@ -4,7 +4,7 @@ services:
       context: .
       args:
         target: runtime
-    image: docker.litellm.ai/berriai/litellm:main-stable
+    image: litellm:local
     network_mode: host
     volumes:
       - ./config.yaml:/app/config.yaml:ro
@@ -21,7 +21,7 @@ services:
       start_period: 40s
 
   litellm2:
-    image: docker.litellm.ai/berriai/litellm:main-stable
+    image: litellm:local
     network_mode: host
     volumes:
       - ./config.yaml:/app/config.yaml:ro
@@ -36,6 +36,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  rover360-relay:
+    image: python:3.11-slim
+    network_mode: host
+    volumes:
+      - ./rover360_relay.py:/app/rover360_relay.py:ro
+    command: ["python", "/app/rover360_relay.py"]
+    restart: unless-stopped
 
   prometheus:
     image: prom/prometheus
